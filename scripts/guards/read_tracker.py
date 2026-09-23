@@ -14,8 +14,9 @@ def handle(
     from lib.state import is_rule_doc_path, write_read_state
 
     required_set = required_set_from_rules(rules)
-    if is_rule_doc_path(event.path, required_set):
-        if adapter.is_full_read(event.tool_input):
-            write_read_state(event.session_id, event.path, state_root)
+    if adapter.is_full_read(event.tool_input):
+        for path in event.path.split("\n"):
+            if path.strip() and is_rule_doc_path(path, required_set):
+                write_read_state(event.session_id, path, state_root)
 
     return GuardOutcome(0, adapter.render_allow())

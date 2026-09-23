@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Unified entry point for rule-guard hooks."""
 from __future__ import annotations
-import argparse, json, sys
+import argparse, json, os, sys
 from pathlib import Path
 from typing import Tuple
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -10,11 +10,16 @@ import config_util
 from guards import GuardOutcome, file_guard, read_tracker
 from lib.audit import append_write_log
 from lib.rules import parse_rules_list
+from lib.platform import PlatformDetectionError, detect_platform
 from lib.shell_targets import get_shell_write_targets
 
 def _load_adapter(platform: str):
     if platform == "copilot":
         from platforms import copilot as adapter
+    elif platform == "claude":
+        from platforms import claude as adapter
+    elif platform == "codex":
+        from platforms import codex as adapter
     else:
         from platforms import cursor as adapter
     return adapter
@@ -31,13 +36,18 @@ def _read_payload() -> Tuple[dict, str]:
 
 def _write_targets(event) -> list[str]:
     if event.action == "write":
-        return [event.path] if event.path.strip() else []
+        return [path for path in event.path.split("\n") if path.strip()]
     return get_shell_write_targets(event.command)
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="rule-guard hook entry point")
-    parser.add_argument("--platform", default="cursor", choices=["cursor", "copilot"])
-    platform = parser.parse_args().platform
+    parser.add_argument("--platform", default=None)
+    try:
+        platform = detect_platform(override=parser.parse_args().platform)
+    except PlatformDetectionError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    os.environ["LULU_PLATFORM"] = platform
     adapter = _load_adapter(platform)
     payload, parse_error = _read_payload()
     if parse_error:
@@ -63,6 +73,14 @@ def main() -> int:
     if event.action in ("write", "shell"):
         targets = _write_targets(event)
         if not targets:
+            if (
+                event.action == "write"
+                and cfg.file_guard.enabled
+                and rules
+                and hasattr(adapter, "render_unparsed_write")
+            ):
+                print(adapter.render_unparsed_write())
+                return 0
             print(adapter.render_allow())
             return 0
         if cfg.file_guard.enabled:

@@ -12,6 +12,23 @@ import pytest
 SCRIPTS = Path(__file__).resolve().parent.parent / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
+_SIGNAL_KEYS = (
+    "LULU_PLATFORM",
+    "COPILOT_AGENT",
+    "VSCODE_TARGET_SESSION_LOG",
+    "CURSOR_AGENT",
+    "CLAUDE_CODE",
+    "CODEX_THREAD_ID",
+    "CODEX_SESSION_ID",
+)
+
+
+@pytest.fixture(autouse=True)
+def _pin_cursor_platform(monkeypatch: pytest.MonkeyPatch) -> None:
+    for key in _SIGNAL_KEYS:
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.setenv("CURSOR_AGENT", "1")
+
 _SPEC = importlib.util.spec_from_file_location(
     "add_guard_rule", SCRIPTS / "add-guard-rule.py"
 )
@@ -80,8 +97,20 @@ def test_local_missing_path(tmp_path: Path) -> None:
         os.chdir(old)
 
 
-def test_source_url_and_local_mutex() -> None:
+def test_source_url_rejected() -> None:
     with pytest.raises(SystemExit):
-        add_guard_rule.main(
-            ["--source-url", "github:o/r@main/a.md", "--local", "x.md"]
-        )
+        add_guard_rule.main(["--source-url", "github:o/r@main/a.md"])
+
+
+def test_path_outside_project(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    outside = tmp_path / "outside.md"
+    _write_md(outside, "**/*.py")
+    old = Path.cwd()
+    try:
+        os.chdir(project)
+        rc = add_guard_rule.main(["--local", str(outside)])
+        assert rc == 1
+    finally:
+        os.chdir(old)

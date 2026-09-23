@@ -4,8 +4,10 @@
   python3 init.py --platform cursor
   python3 init.py --platform copilot
 
-Cursor side  → merges .cursor/hooks.json   (preToolUse + stop)
-Copilot side → merges .github/hooks/hooks.json  (PreToolUse + Stop)
+Cursor  → .cursor/hooks.json          (preToolUse + stop)
+Copilot → .github/hooks/hooks.json    (PreToolUse + Stop)
+Claude  → .claude/settings.json       (PreToolUse + Stop)
+Codex   → .codex/hooks.json           (PreToolUse + Stop)
 """
 from __future__ import annotations
 
@@ -24,6 +26,8 @@ from config_util import (
     logs_dir,
     rules_state_root,
 )
+from lib.grouped_hooks import merge_claude_hooks, merge_codex_hooks
+from lib.platform import PlatformDetectionError, detect_platform
 
 SKILL_ROOT = SCRIPT_DIR.parent
 SKILL_README = SKILL_ROOT / "templates" / "README.md"
@@ -247,22 +251,25 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         description="Initialize rule-guard in the current project"
     )
-    parser.add_argument(
-        "--platform",
-        default="cursor",
-        choices=["cursor", "copilot"],
-    )
+    parser.add_argument("--platform", default=None)
     args = parser.parse_args(argv)
-    platform = args.platform
+    try:
+        platform = detect_platform(override=args.platform)
+    except PlatformDetectionError as exc:
+        print(f"[init] {exc}", file=sys.stderr)
+        return 1
 
     _create_cache_dirs(platform)
     rule_config_file = ensure_rule_config(platform)
 
+    mergers = {
+        "cursor": _merge_cursor_hooks,
+        "copilot": _merge_copilot_hooks,
+        "claude": merge_claude_hooks,
+        "codex": merge_codex_hooks,
+    }
     try:
-        if platform == "cursor":
-            hooks_path = _merge_cursor_hooks()
-        else:
-            hooks_path = _merge_copilot_hooks()
+        hooks_path = mergers[platform]()
     except (json.JSONDecodeError, OSError) as exc:
         print(f"[init] merge hooks failed: {exc}", file=sys.stderr)
         return 1
@@ -271,8 +278,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     print(f"[init] rule-guard ({platform}) initialized")
     print(f"  config: {rule_config_file.as_posix()}")
     print(
-        "  next: add glob → rule mappings with add-guard-rule. "
-        "Example: github:owner/repo/ref/path/to/rule.md"
+        "  next: add glob → rule mappings with add-guard-rule --local <project-path>"
     )
     if SKILL_README.is_file():
         print(f"  docs: {SKILL_README.as_posix()}")

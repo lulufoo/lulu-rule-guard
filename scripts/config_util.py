@@ -62,10 +62,16 @@ class LoadedConfig:
 # ── Platform-specific paths ────────────────────────────────────────────────────
 
 
+_CONFIG_ROOTS = {
+    "cursor": Path(".cursor/skills/lulu-rule-guard"),
+    "copilot": Path(".github/lulu-rule-guard"),
+    "claude": Path(".claude/lulu-rule-guard"),
+    "codex": Path(".codex/lulu-rule-guard"),
+}
+
+
 def config_root(platform: str = "cursor") -> Path:
-    if platform == "copilot":
-        return Path(".github/lulu-rule-guard")
-    return Path(".cursor/skills/lulu-rule-guard")
+    return _CONFIG_ROOTS.get(platform, _CONFIG_ROOTS["cursor"])
 
 
 def config_path(platform: str = "cursor") -> Path:

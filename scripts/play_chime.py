@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from config_util import ChimeSettings, load_config
+from lib.platform import PlatformDetectionError, detect_platform
 
 CHIME_FFMPEG = Path("/opt/homebrew/bin/ffmpeg")
 CHIME_DEBUG = False
@@ -109,10 +110,15 @@ def main() -> int:
     import select
 
     parser = argparse.ArgumentParser(add_help=False)
-    parser.add_argument("--platform", default="copilot")
+    parser.add_argument("--platform", default=None)
     args, _ = parser.parse_known_args()
+    try:
+        platform = detect_platform(override=args.platform)
+    except PlatformDetectionError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
 
-    cfg = load_config(args.platform)
+    cfg = load_config(platform)
     if not cfg.chime.enabled:
         return 0
 
@@ -128,7 +134,7 @@ def main() -> int:
         except (json.JSONDecodeError, OSError, ValueError):
             payload = {}
 
-    if args.platform == "cursor" and payload.get("status") != "completed":
+    if platform == "cursor" and payload.get("status") != "completed":
         return 0
 
     _play_chime(project_root, cfg.chime)

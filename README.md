@@ -1,8 +1,6 @@
 # lulu-rule-guard
 
-A Cursor and Copilot skill that blocks a write until the session has fully read the rule document configured for that file.
-
-Install the skill at `~/.cursor/skills/lulu-rule-guard`. In a project, run the commands below. The skill detects Cursor or Copilot and writes that platform's hooks and config.
+Blocks a write until the session has fully read the rule document configured for that file.
 
 ## Commands
 
@@ -12,14 +10,18 @@ Install the skill at `~/.cursor/skills/lulu-rule-guard`. In a project, run the c
 | `/lulu-rule-guard init` | Register hooks and create config if it is missing. An existing config file is left unchanged |
 | `/lulu-rule-guard add-guard-rule --local <path>` | Map file globs to a local rule document or directory. Requires `init` |
 
-`add-guard-rule` skips Markdown that has no `rule-guard.globs` frontmatter. The same glob replaces the existing `required` entry. `--source-url` fetches a GitHub Markdown file instead of using a local path.
+`add-guard-rule` registers Markdown that already exists in the project. The path must stay inside the project. Files without `rule-guard.globs` frontmatter are skipped. The same glob replaces the existing `required` entry.
 
 ## After `init`
+
+`init` writes the hooks and config for the current platform.
 
 | Platform | Hooks | Config |
 |----------|-------|--------|
 | Cursor | `.cursor/hooks.json` | `.cursor/skills/lulu-rule-guard/rule-guard-config.json` |
 | Copilot | `.github/hooks/hooks.json` | `.github/lulu-rule-guard/rule-guard-config.json` |
+| Claude | `.claude/settings.json` | `.claude/lulu-rule-guard/rule-guard-config.json` |
+| Codex | `.codex/hooks.json` | `.codex/lulu-rule-guard/rule-guard-config.json` |
 
 `preToolUse` enforces the guard. `stop` plays the chime when that setting is on.
 
@@ -57,6 +59,6 @@ When `fileGuard.enabled` is true and `rules` is non-empty, a write that matches 
 | `chimeGuard.enabled` | Play a sound when the agent stops. Omitted means off |
 | `chimeGuard.sound` / `volume` / `gain` | Sound file, volume, and gain |
 | `fileGuard.enabled` | Enforce read-before-write |
-| `fileGuard.rulesDocsDir` | Project directory for rule documents fetched from GitHub. Absolute paths are rejected |
+| `fileGuard.rulesDocsDir` | Relative directory name stored on `fileGuard`. Absolute paths are rejected |
 | `rules[].glob` | Files this rule guards |
 | `rules[].required` | Documents that must be fully read before those writes. Paths are relative to the project root |
