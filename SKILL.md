@@ -68,9 +68,6 @@ Register a Markdown file or directory that already exists in this project.
 
 The path stays inside the project. Files without `rule-guard.globs` are skipped. The same glob replaces `required`.
 
-After **lulu-discipline-skills** `init`, register that skill's
-`$PROJECT_COPY` with `$ADD_GUARD --local $PROJECT_COPY`.
-
 ## Hooks
 
 | Event | Script | Effect |
