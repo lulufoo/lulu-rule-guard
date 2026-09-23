@@ -91,13 +91,15 @@ class TestFileGuardHelpers(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             config = Path(tmp) / "rule-guard-config.json"
             config.write_text(
-                json.dumps({"version": 2, "chime": {"enabled": True}}) + "\n",
+                json.dumps({"version": 2, "chimeGuard": {"enabled": True}}) + "\n",
                 encoding="utf-8",
             )
             write_file_guard_rules(config, [{"glob": "*.md", "required": ["docs/a.md"]}])
             data = json.loads(config.read_text(encoding="utf-8"))
-            self.assertTrue(data["chime"]["enabled"])
+            self.assertTrue(data["chimeGuard"]["enabled"])
             self.assertEqual(len(data["fileGuard"]["rules"]), 1)
+            loaded = load_runtime_config(str(config))
+            self.assertTrue(loaded.chime.enabled)
 
     def test_migrate_legacy_rules_file(self):
         with tempfile.TemporaryDirectory() as tmp:

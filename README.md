@@ -27,12 +27,12 @@ When `fileGuard.enabled` is true and `rules` is non-empty, a write that matches 
 
 ## Config
 
-`init` writes `version` and an empty `fileGuard`. It does not write `chime`. The sample below is that file after rules and the optional chime block are added. `required` is a path inside the project.
+`init` writes `version` and an empty `fileGuard`. It does not write `chimeGuard`. The sample below is that file after rules and the optional chime block are added. `required` is a path inside the project.
 
 ```json
 {
   "version": 2,
-  "chime": {
+  "chimeGuard": {
     "enabled": false,
     "sound": "/System/Library/Sounds/Funk.aiff",
     "volume": 1,
@@ -54,8 +54,8 @@ When `fileGuard.enabled` is true and `rules` is non-empty, a write that matches 
 | Field | Meaning |
 |-------|---------|
 | `version` | Config version. Current value is `2` |
-| `chime.enabled` | Play a sound when the agent stops. Omitted means off |
-| `chime.sound` / `volume` / `gain` | Sound file, volume, and gain |
+| `chimeGuard.enabled` | Play a sound when the agent stops. Omitted means off |
+| `chimeGuard.sound` / `volume` / `gain` | Sound file, volume, and gain |
 | `fileGuard.enabled` | Enforce read-before-write |
 | `fileGuard.rulesDocsDir` | Project directory for rule documents fetched from GitHub. Absolute paths are rejected |
 | `rules[].glob` | Files this rule guards |

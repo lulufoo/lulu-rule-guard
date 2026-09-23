@@ -237,7 +237,10 @@ def load_runtime_config(path: str, *, legacy_rules_file: str | None = None) -> R
         legacy_enabled = None
         if "chimeEnabled" in data:
             legacy_enabled = _parse_bool(data.get("chimeEnabled"))
-        chime = _parse_chime(data.get("chime"), legacy_enabled=legacy_enabled)
+        raw_chime = data.get("chimeGuard")
+        if raw_chime is None:
+            raw_chime = data.get("chime")
+        chime = _parse_chime(raw_chime, legacy_enabled=legacy_enabled)
         file_guard = parse_file_guard(
             data.get("fileGuard"),
             legacy_rules_docs_dir=data.get("rulesDocsDir"),
