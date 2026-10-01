@@ -193,6 +193,7 @@ const ENTRY = "~/.agents/skills/lulu-rule-guard/scripts/entry.py"
 
 export const RuleGuardPlugin = async (ctx: any) => {
   const entry = ENTRY.replace(/^~/, process.env.HOME ?? "")
+
   const log = (message: string) => {
     try {
       ctx?.client?.app?.log?.({
@@ -202,7 +203,8 @@ export const RuleGuardPlugin = async (ctx: any) => {
   }
 
   const runViaBun = async (json: string): Promise<string> => {
-    const proc = Bun.spawn(["python3", entry, "--platform", "opencode"], {
+    const bun = (globalThis as any).Bun
+    const proc = bun.spawn(["python3", entry, "--platform", "opencode"], {
       stdin: "pipe",
       stdout: "pipe",
       stderr: "pipe",
@@ -213,11 +215,13 @@ export const RuleGuardPlugin = async (ctx: any) => {
   }
 
   const runViaNode = async (json: string): Promise<string> => {
-    const cp = await import("node:child_process")
+    const cp: any = await import("node:child_process")
     return await new Promise<string>((resolve, reject) => {
       const proc = cp.spawn("python3", [entry, "--platform", "opencode"])
       let out = ""
-      proc.stdout.on("data", (chunk: any) => (out += chunk))
+      proc.stdout.on("data", (chunk: any) => {
+        out += chunk
+      })
       proc.on("error", reject)
       proc.on("close", () => resolve(out))
       proc.stdin.write(json)
@@ -225,38 +229,21 @@ export const RuleGuardPlugin = async (ctx: any) => {
     })
   }
 
-  const runViaShell = async (json: string): Promise<string> => {
-    const $ = ctx?.$
-    if (typeof $ !== "function") throw new Error("no shell api")
-    const tmpDir = `${ctx?.directory ?? process.cwd()}/.cache/lulu-rule-guard`
-    const stamp = `${Date.now()}-${Math.random().toString(36).slice(2)}`
-    const tmp = `${tmpDir}/payload-${stamp}.json`
-    await $`mkdir -p ${tmpDir}`.quiet()
-    await $`printf %s ${json} > ${tmp}`.quiet()
-    try {
-      return await $`python3 ${entry} --platform opencode < ${tmp}`.quiet().text()
-    } finally {
-      await $`rm -f ${tmp}`.quiet()
-    }
-  }
-
-  const runners = [
-    ["bun", runViaBun],
-    ["node", runViaNode],
-    ["shell", runViaShell],
-  ] as const
-
   const runEntry = async (json: string): Promise<string> => {
     const errors: string[] = []
-    for (const [name, run] of runners) {
-      if (name === "bun" && typeof Bun === "undefined") continue
+    if (typeof (globalThis as any).Bun !== "undefined") {
       try {
-        return await run(json)
+        return await runViaBun(json)
       } catch (err: any) {
-        errors.push(`${name}: ${String(err && err.message ? err.message : err)}`)
+        errors.push("bun:" + String((err && err.message) || err))
       }
     }
-    log(`guard runner failed: ${errors.join(" | ")}`)
+    try {
+      return await runViaNode(json)
+    } catch (err: any) {
+      errors.push("node:" + String((err && err.message) || err))
+    }
+    log("guard runner failed: " + errors.join(" | "))
     throw new Error(errors.join(" | "))
   }
 
