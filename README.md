@@ -18,10 +18,15 @@ Blocks a write until the session has fully read the rule document configured for
 
 | Platform | Hooks | Config |
 |----------|-------|--------|
-| Cursor | `.cursor/hooks.json` | `.cursor/skills/lulu-rule-guard/rule-guard-config.json` |
-| Copilot | `.github/hooks/hooks.json` | `.github/lulu-rule-guard/rule-guard-config.json` |
-| Claude | `.claude/settings.json` | `.claude/lulu-rule-guard/rule-guard-config.json` |
-| Codex | `.codex/hooks.json` | `.codex/lulu-rule-guard/rule-guard-config.json` |
+| Cursor | `.cursor/hooks.json` | `.agents/config/lulu-rule-guard/rule-guard-config.json` |
+| Copilot | `.github/hooks/hooks.json` | `.agents/config/lulu-rule-guard/rule-guard-config.json` |
+| Claude | `.claude/settings.json` | `.agents/config/lulu-rule-guard/rule-guard-config.json` |
+| Codex | `.codex/hooks.json` | `.agents/config/lulu-rule-guard/rule-guard-config.json` |
+| OpenCode | `.opencode/plugins/lulu-rule-guard.ts` (plugin bridge) | `.agents/config/lulu-rule-guard/rule-guard-config.json` |
+
+Config is platform-neutral and shared. When `.agents/config/lulu-rule-guard/rule-guard-config.json` does not exist, the legacy per-platform path (`.cursor/skills/lulu-rule-guard/`, `.github/lulu-rule-guard/`, `.claude/lulu-rule-guard/`, `.codex/lulu-rule-guard/`) is the fallback.
+
+OpenCode has no declarative hooks.json; `init` writes a TypeScript plugin that calls the same `entry.py` (`tool.execute.before`, deny = throw). The chime is not wired on OpenCode. Restart OpenCode after `init` for the plugin to load.
 
 `preToolUse` enforces the guard. `stop` plays the chime when that setting is on.
 

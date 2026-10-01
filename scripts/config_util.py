@@ -5,10 +5,11 @@ Project config root is $RULE_GUARD_DIR. Pointer config.json and
 skill-config/lulu-rule-guard/ are ignored.
 
 Platform path layout:
-  cursor  config : .cursor/skills/lulu-rule-guard/rule-guard-config.json
-          cache  : .cache/cursor/lulu-rule-guard/
-  copilot config : .github/lulu-rule-guard/rule-guard-config.json
-          cache  : .cache/copilot/lulu-rule-guard/
+  config (all platforms) : .agents/config/lulu-rule-guard/rule-guard-config.json
+  legacy config          : .cursor/skills/lulu-rule-guard/ , .github/lulu-rule-guard/ ,
+                           .claude/lulu-rule-guard/ , .codex/lulu-rule-guard/
+                           (used only when no .agents config exists)
+  cache                  : .cache/{platform}/lulu-rule-guard/
 """
 from __future__ import annotations
 
@@ -22,8 +23,8 @@ from typing import List
 _RULE_CONFIG_FILENAME = "rule-guard-config.json"
 _LEGACY_RULES_FILENAME = "rule-guard.json"
 
-DEFAULT_RULES_FILE = ".cursor/skills/lulu-rule-guard/rule-guard.json"
-DEFAULT_RULE_CONFIG_FILE = ".cursor/skills/lulu-rule-guard/rule-guard-config.json"
+DEFAULT_RULES_FILE = ".agents/config/lulu-rule-guard/rule-guard.json"
+DEFAULT_RULE_CONFIG_FILE = ".agents/config/lulu-rule-guard/rule-guard-config.json"
 
 
 # ── Dataclasses ────────────────────────────────────────────────────────────────
@@ -62,7 +63,9 @@ class LoadedConfig:
 # ── Platform-specific paths ────────────────────────────────────────────────────
 
 
-_CONFIG_ROOTS = {
+_AGENTS_CONFIG_ROOT = Path(".agents/config/lulu-rule-guard")
+
+_LEGACY_CONFIG_ROOTS = {
     "cursor": Path(".cursor/skills/lulu-rule-guard"),
     "copilot": Path(".github/lulu-rule-guard"),
     "claude": Path(".claude/lulu-rule-guard"),
@@ -71,7 +74,13 @@ _CONFIG_ROOTS = {
 
 
 def config_root(platform: str = "cursor") -> Path:
-    return _CONFIG_ROOTS.get(platform, _CONFIG_ROOTS["cursor"])
+    """Platform-neutral .agents root wins; legacy per-platform root is fallback."""
+    if (_AGENTS_CONFIG_ROOT / _RULE_CONFIG_FILENAME).exists():
+        return _AGENTS_CONFIG_ROOT
+    legacy = _LEGACY_CONFIG_ROOTS.get(platform, _LEGACY_CONFIG_ROOTS["cursor"])
+    if (legacy / _RULE_CONFIG_FILENAME).exists():
+        return legacy
+    return _AGENTS_CONFIG_ROOT
 
 
 def config_path(platform: str = "cursor") -> Path:

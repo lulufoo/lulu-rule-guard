@@ -13,12 +13,13 @@ from lib.grouped_hooks import merge_claude_hooks, merge_codex_hooks
 from platforms import claude, codex
 
 
-def test_claude_and_codex_config_paths():
+def test_claude_and_codex_config_paths(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
     assert str(config_util.config_path("claude")) == (
-        ".claude/lulu-rule-guard/rule-guard-config.json"
+        ".agents/config/lulu-rule-guard/rule-guard-config.json"
     )
     assert str(config_util.config_path("codex")) == (
-        ".codex/lulu-rule-guard/rule-guard-config.json"
+        ".agents/config/lulu-rule-guard/rule-guard-config.json"
     )
     assert str(config_util.cache_root("claude")) == ".cache/claude/lulu-rule-guard"
     assert str(config_util.cache_root("codex")) == ".cache/codex/lulu-rule-guard"

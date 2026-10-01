@@ -12,7 +12,7 @@ from typing import Optional
 
 from config_util import cache_root, config_root
 
-SUPPORTED_PLATFORMS = ("cursor", "copilot", "claude", "codex")
+SUPPORTED_PLATFORMS = ("cursor", "copilot", "claude", "codex", "opencode")
 
 
 class PlatformDetectionError(Exception):
@@ -35,6 +35,8 @@ def _signal_platform() -> Optional[str]:
         return "claude"
     if os.environ.get("CODEX_THREAD_ID") or os.environ.get("CODEX_SESSION_ID"):
         return "codex"
+    if os.environ.get("OPENCODE_CLIENT") or os.environ.get("OPENCODE"):
+        return "opencode"
     return None
 
 

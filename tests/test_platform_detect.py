@@ -20,6 +20,8 @@ _SIGNAL_KEYS = (
     "CLAUDE_CODE",
     "CODEX_THREAD_ID",
     "CODEX_SESSION_ID",
+    "OPENCODE_CLIENT",
+    "OPENCODE",
 )
 
 
@@ -108,7 +110,7 @@ def test_resolve_platform_context_paths(tmp_path, monkeypatch):
     assert payload == {
         "platform": "claude",
         "skill_root": str((tmp_path / "lulu-rule-guard").resolve()),
-        "rule_guard_dir": ".claude/lulu-rule-guard",
+        "rule_guard_dir": ".agents/config/lulu-rule-guard",
         "cache_dir": ".cache/claude/lulu-rule-guard",
     }
 
@@ -126,4 +128,4 @@ def test_platform_context_script_prints_json():
     assert result.returncode == 0, result.stderr
     payload = json.loads(result.stdout)
     assert payload["platform"] == "cursor"
-    assert payload["rule_guard_dir"] == ".cursor/skills/lulu-rule-guard"
+    assert payload["rule_guard_dir"] == ".agents/config/lulu-rule-guard"

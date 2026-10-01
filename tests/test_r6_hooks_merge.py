@@ -171,7 +171,7 @@ def test_cursor_hooks_strips_before_read_file(tmp_path, monkeypatch):
                 "preToolUse": [],
                 "beforeReadFile": [
                     {
-                        "command": "python3 ~/.cursor/skills/lulu-rule-guard/scripts/entry.py --platform cursor",
+                        "command": "python3 ~/.agents/skills/lulu-rule-guard/scripts/entry.py --platform cursor",
                         "timeout": 5,
                         "failClosed": False,
                     },

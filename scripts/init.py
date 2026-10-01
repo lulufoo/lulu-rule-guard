@@ -34,7 +34,7 @@ SKILL_README = SKILL_ROOT / "templates" / "README.md"
 
 # ── Cursor hooks ───────────────────────────────────────────────────────────────
 CURSOR_HOOKS_PATH = Path(".cursor/hooks.json")
-CURSOR_SKILL_SCRIPTS = "~/.cursor/skills/lulu-rule-guard/scripts"
+CURSOR_SKILL_SCRIPTS = "~/.agents/skills/lulu-rule-guard/scripts"
 CURSOR_ENTRY = f"python3 {CURSOR_SKILL_SCRIPTS}/entry.py --platform cursor"
 CURSOR_CHIME = f"python3 {CURSOR_SKILL_SCRIPTS}/play_chime.py --platform cursor"
 
@@ -183,6 +183,68 @@ def _merge_cursor_hooks() -> str:
     return str(CURSOR_HOOKS_PATH)
 
 
+# ── OpenCode plugin ─────────────────────────────────────────────────────────────
+OPENCODE_PLUGIN_PATH = Path(".opencode/plugins/lulu-rule-guard.ts")
+
+OPENCODE_PLUGIN_SOURCE = """\
+// lulu-rule-guard bridge for OpenCode.
+// Managed by `lulu-rule-guard init --platform opencode`.
+const ENTRY = "~/.agents/skills/lulu-rule-guard/scripts/entry.py"
+
+export const RuleGuardPlugin = async () => {
+  const entry = ENTRY.replace(/^~/, process.env.HOME ?? "")
+
+  const guard = async (input: any, output: any): Promise<void> => {
+    const sessionId = input.sessionID ?? input.callID ?? "opencode"
+    const args = output.args ?? {}
+    let payload: Record<string, unknown> | null = null
+    if (input.tool === "read") {
+      payload = {
+        action: "read",
+        path: args.filePath,
+        session_id: sessionId,
+        offset: args.offset,
+        limit: args.limit,
+      }
+    } else if (input.tool === "edit" || input.tool === "write") {
+      payload = { action: "write", path: args.filePath, session_id: sessionId }
+    } else if (input.tool === "bash") {
+      payload = { action: "shell", command: args.command, session_id: sessionId }
+    }
+    if (payload === null) return
+
+    const proc = Bun.spawn(["python3", entry, "--platform", "opencode"], {
+      stdin: "pipe",
+      stdout: "pipe",
+      stderr: "pipe",
+    })
+    proc.stdin.write(JSON.stringify(payload))
+    proc.stdin.end()
+    const stdout = await new Response(proc.stdout).text()
+    await proc.exited
+    const decision = stdout.trim().split("\\n").pop() ?? ""
+    if (decision.startsWith("DENY")) {
+      throw new Error(decision.slice(4).trim() || "blocked by lulu-rule-guard")
+    }
+  }
+
+  return { "tool.execute.before": guard }
+}
+"""
+
+
+def _write_opencode_plugin() -> str:
+    if OPENCODE_PLUGIN_PATH.exists():
+        existing = OPENCODE_PLUGIN_PATH.read_text(encoding="utf-8")
+        if "rule-guard" not in existing:
+            raise OSError(
+                f"{OPENCODE_PLUGIN_PATH.as_posix()} exists and is not rule-guard managed"
+            )
+    OPENCODE_PLUGIN_PATH.parent.mkdir(parents=True, exist_ok=True)
+    OPENCODE_PLUGIN_PATH.write_text(OPENCODE_PLUGIN_SOURCE, encoding="utf-8")
+    return str(OPENCODE_PLUGIN_PATH)
+
+
 # ── Copilot merge helpers ──────────────────────────────────────────────────────
 
 def _is_copilot_rule_guard_entry(cmd: str) -> bool:
@@ -267,6 +329,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "copilot": _merge_copilot_hooks,
         "claude": merge_claude_hooks,
         "codex": merge_codex_hooks,
+        "opencode": _write_opencode_plugin,
     }
     try:
         hooks_path = mergers[platform]()

@@ -20,6 +20,8 @@ def _load_adapter(platform: str):
         from platforms import claude as adapter
     elif platform == "codex":
         from platforms import codex as adapter
+    elif platform == "opencode":
+        from platforms import opencode as adapter
     else:
         from platforms import cursor as adapter
     return adapter

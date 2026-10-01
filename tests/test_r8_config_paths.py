@@ -1,7 +1,8 @@
 """R8: Test config_util path functions for both platforms.
 
-Verifies that platform-specific config and cache paths are correct
-and that backward-compatible aliases still point to cursor paths.
+Verifies that config resolves to the platform-neutral .agents root by
+default, that legacy per-platform roots remain fallbacks, and that
+backward-compatible aliases still point to the default config path.
 """
 from __future__ import annotations
 
@@ -17,14 +18,47 @@ sys.path.insert(0, str(SCRIPTS))
 import config_util
 
 
-def test_cursor_config_path():
+def test_cursor_config_path(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
     p = config_util.config_path("cursor")
-    assert str(p) == ".cursor/skills/lulu-rule-guard/rule-guard-config.json"
+    assert str(p) == ".agents/config/lulu-rule-guard/rule-guard-config.json"
 
 
-def test_copilot_config_path():
+def test_copilot_config_path(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
     p = config_util.config_path("copilot")
-    assert str(p) == ".github/lulu-rule-guard/rule-guard-config.json"
+    assert str(p) == ".agents/config/lulu-rule-guard/rule-guard-config.json"
+
+
+def test_config_root_agents_wins_over_legacy(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    for root in (
+        tmp_path / ".agents/config/lulu-rule-guard",
+        tmp_path / ".cursor/skills/lulu-rule-guard",
+    ):
+        root.mkdir(parents=True, exist_ok=True)
+        (root / "rule-guard-config.json").write_text("{}", encoding="utf-8")
+    assert config_util.config_root("cursor").as_posix() == ".agents/config/lulu-rule-guard"
+
+
+def test_config_root_legacy_fallback(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    legacy = tmp_path / ".cursor/skills/lulu-rule-guard"
+    legacy.mkdir(parents=True)
+    (legacy / "rule-guard-config.json").write_text("{}", encoding="utf-8")
+    assert config_util.config_root("cursor").as_posix() == ".cursor/skills/lulu-rule-guard"
+    assert config_util.config_path("cursor").as_posix() == (
+        ".cursor/skills/lulu-rule-guard/rule-guard-config.json"
+    )
+
+
+def test_config_root_legacy_fallback_other_platform(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    legacy = tmp_path / ".claude/lulu-rule-guard"
+    legacy.mkdir(parents=True)
+    (legacy / "rule-guard-config.json").write_text("{}", encoding="utf-8")
+    assert config_util.config_root("claude").as_posix() == ".claude/lulu-rule-guard"
+    assert config_util.config_root("cursor").as_posix() == ".agents/config/lulu-rule-guard"
 
 
 def test_cursor_cache_root():
@@ -38,8 +72,8 @@ def test_copilot_cache_root():
 
 
 def test_backward_compat_CONFIG_PATH():
-    """CONFIG_PATH alias still points to cursor path."""
-    assert str(config_util.CONFIG_PATH) == ".cursor/skills/lulu-rule-guard/rule-guard-config.json"
+    """CONFIG_PATH alias still points to the default config path."""
+    assert str(config_util.CONFIG_PATH) == ".agents/config/lulu-rule-guard/rule-guard-config.json"
 
 
 def test_backward_compat_CACHE_ROOT():
@@ -225,7 +259,7 @@ def test_init_seeds_rule_config_not_pointer(tmp_path, monkeypatch):
     import init as init_mod
 
     assert init_mod.main(["--platform", "cursor"]) == 0
-    root = tmp_path / ".cursor/skills/lulu-rule-guard"
+    root = tmp_path / ".agents/config/lulu-rule-guard"
     assert (root / "rule-guard-config.json").is_file()
     assert not (root / "config.json").exists()
     assert not (tmp_path / "skill-config/lulu-rule-guard/rule-guard-config.json").exists()
