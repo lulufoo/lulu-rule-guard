@@ -193,6 +193,9 @@ const ENTRY = "~/.agents/skills/lulu-rule-guard/scripts/entry.py"
 
 export const RuleGuardPlugin = async (ctx: any) => {
   const entry = ENTRY.replace(/^~/, process.env.HOME ?? "")
+  // entry.py resolves config and state paths relative to cwd; the GUI server
+  // process may run with cwd=$HOME, so pin it to the project directory.
+  const cwd: string = ctx?.directory ?? ctx?.project?.directory ?? process.cwd()
 
   const log = (message: string) => {
     try {
@@ -208,6 +211,7 @@ export const RuleGuardPlugin = async (ctx: any) => {
       stdin: "pipe",
       stdout: "pipe",
       stderr: "pipe",
+      cwd,
     })
     proc.stdin.write(json)
     proc.stdin.end()
@@ -217,7 +221,7 @@ export const RuleGuardPlugin = async (ctx: any) => {
   const runViaNode = async (json: string): Promise<string> => {
     const cp: any = await import("node:child_process")
     return await new Promise<string>((resolve, reject) => {
-      const proc = cp.spawn("python3", [entry, "--platform", "opencode"])
+      const proc = cp.spawn("python3", [entry, "--platform", "opencode"], { cwd })
       let out = ""
       proc.stdout.on("data", (chunk: any) => {
         out += chunk
