@@ -60,14 +60,7 @@ def test_claude_settings_merge_keeps_other_keys(tmp_path, monkeypatch):
     assert commands[0].endswith("entry.py --platform claude")
     assert commands.count(commands[0]) == 1
     assert "echo keep" in commands
-    stop_commands = [
-        hook["command"]
-        for group in data["hooks"]["Stop"]
-        for hook in group["hooks"]
-    ]
-    assert stop_commands == [
-        "python3 ~/.claude/skills/lulu-rule-guard/scripts/play_chime.py --platform claude"
-    ]
+    assert "Stop" not in data["hooks"]
 
 
 def test_codex_hooks_merge(tmp_path, monkeypatch):
@@ -77,7 +70,7 @@ def test_codex_hooks_merge(tmp_path, monkeypatch):
     pre = data["hooks"]["PreToolUse"][0]
     assert pre["matcher"] == "Bash|apply_patch|read_file"
     assert pre["hooks"][0]["command"].endswith("entry.py --platform codex")
-    assert "matcher" not in data["hooks"]["Stop"][0]
+    assert "Stop" not in data["hooks"]
 
 
 def test_claude_parses_write_and_partial_read():

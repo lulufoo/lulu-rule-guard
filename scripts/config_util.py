@@ -31,14 +31,6 @@ DEFAULT_RULE_CONFIG_FILE = ".agents/config/lulu-rule-guard/rule-guard-config.jso
 
 
 @dataclass
-class ChimeSettings:
-    enabled: bool = False
-    sound: str = "/System/Library/Sounds/Funk.aiff"
-    volume: float = 1.0
-    gain: int = 25
-
-
-@dataclass
 class FileGuardConfig:
     enabled: bool = True
     rules_docs_dir: str = "docs"
@@ -48,14 +40,12 @@ class FileGuardConfig:
 @dataclass
 class RuntimeConfig:
     version: int = 2
-    chime: ChimeSettings = field(default_factory=ChimeSettings)
     file_guard: FileGuardConfig = field(default_factory=FileGuardConfig)
 
 
 @dataclass
 class LoadedConfig:
     rule_config: str
-    chime: ChimeSettings
     file_guard: FileGuardConfig = field(default_factory=FileGuardConfig)
     legacy_rules_file: str = DEFAULT_RULES_FILE
 
@@ -122,25 +112,6 @@ def _parse_bool(raw: object, default: bool = False) -> bool:
     if isinstance(raw, str):
         return raw.strip().lower() == "true"
     return bool(raw)
-
-
-def _parse_chime(raw: object, *, legacy_enabled: bool | None = None) -> ChimeSettings:
-    defaults = ChimeSettings()
-    if not isinstance(raw, dict):
-        enabled = legacy_enabled if legacy_enabled is not None else defaults.enabled
-        return ChimeSettings(enabled=enabled)
-    if "enabled" in raw:
-        enabled = _parse_bool(raw.get("enabled"), defaults.enabled)
-    elif legacy_enabled is not None:
-        enabled = legacy_enabled
-    else:
-        enabled = defaults.enabled
-    return ChimeSettings(
-        enabled=enabled,
-        sound=raw.get("sound", defaults.sound),
-        volume=float(raw.get("volume", defaults.volume)),
-        gain=int(raw.get("gain", defaults.gain)),
-    )
 
 
 def _parse_rule_dicts(raw_rules: object) -> List[dict]:
@@ -249,13 +220,6 @@ def load_runtime_config(path: str, *, legacy_rules_file: str | None = None) -> R
         data = json.loads(p.read_text(encoding="utf-8"))
         if not isinstance(data, dict):
             return defaults
-        legacy_enabled = None
-        if "chimeEnabled" in data:
-            legacy_enabled = _parse_bool(data.get("chimeEnabled"))
-        raw_chime = data.get("chimeGuard")
-        if raw_chime is None:
-            raw_chime = data.get("chime")
-        chime = _parse_chime(raw_chime, legacy_enabled=legacy_enabled)
         file_guard = parse_file_guard(
             data.get("fileGuard"),
             legacy_rules_docs_dir=data.get("rulesDocsDir"),
@@ -266,7 +230,6 @@ def load_runtime_config(path: str, *, legacy_rules_file: str | None = None) -> R
                 file_guard.rules = legacy_rules
         return RuntimeConfig(
             version=int(data.get("version", defaults.version)),
-            chime=chime,
             file_guard=file_guard,
         )
     except (json.JSONDecodeError, OSError, ValueError):
@@ -286,7 +249,6 @@ def load_config(platform: str = "cursor") -> LoadedConfig:
     rt = load_runtime_config(str(dest), legacy_rules_file=legacy_str)
     return LoadedConfig(
         rule_config=dest.as_posix(),
-        chime=rt.chime,
         file_guard=rt.file_guard,
         legacy_rules_file=legacy.as_posix(),
     )

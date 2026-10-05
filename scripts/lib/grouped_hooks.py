@@ -52,7 +52,7 @@ def _strip_command(groups: list, needle: str) -> list:
     return kept
 
 
-def _merge(path: Path, pre_matcher: str, entry: str, chime: str) -> str:
+def _merge(path: Path, pre_matcher: str, entry: str) -> str:
     if path.exists():
         data = json.loads(path.read_text(encoding="utf-8"))
     else:
@@ -71,7 +71,10 @@ def _merge(path: Path, pre_matcher: str, entry: str, chime: str) -> str:
 
     stop = hooks.get("Stop")
     stop_groups = _strip_command(stop if isinstance(stop, list) else [], _CHIME_NEEDLE)
-    hooks["Stop"] = stop_groups + [_group(chime, None)]
+    if stop_groups:
+        hooks["Stop"] = stop_groups
+    elif "Stop" in hooks:
+        del hooks["Stop"]
 
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
@@ -87,7 +90,6 @@ def merge_claude_hooks() -> str:
         Path(".claude/settings.json"),
         "Read|Write|Edit|Bash|PowerShell",
         f"python3 {scripts}/entry.py --platform claude",
-        f"python3 {scripts}/play_chime.py --platform claude",
     )
 
 
@@ -97,5 +99,4 @@ def merge_codex_hooks() -> str:
         Path(".codex/hooks.json"),
         "Bash|apply_patch|read_file",
         f"python3 {scripts}/entry.py --platform codex",
-        f"python3 {scripts}/play_chime.py --platform codex",
     )

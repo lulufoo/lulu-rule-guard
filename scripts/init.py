@@ -4,10 +4,10 @@
   python3 init.py --platform cursor
   python3 init.py --platform copilot
 
-Cursor  → .cursor/hooks.json          (preToolUse + stop)
-Copilot → .github/hooks/hooks.json    (PreToolUse + Stop)
-Claude  → .claude/settings.json       (PreToolUse + Stop)
-Codex   → .codex/hooks.json           (PreToolUse + Stop)
+Cursor  → .cursor/hooks.json          (preToolUse)
+Copilot → .github/hooks/hooks.json    (PreToolUse)
+Claude  → .claude/settings.json       (PreToolUse)
+Codex   → .codex/hooks.json           (PreToolUse)
 """
 from __future__ import annotations
 
@@ -36,7 +36,6 @@ SKILL_README = SKILL_ROOT / "templates" / "README.md"
 CURSOR_HOOKS_PATH = Path(".cursor/hooks.json")
 CURSOR_SKILL_SCRIPTS = "~/.agents/skills/lulu-rule-guard/scripts"
 CURSOR_ENTRY = f"python3 {CURSOR_SKILL_SCRIPTS}/entry.py --platform cursor"
-CURSOR_CHIME = f"python3 {CURSOR_SKILL_SCRIPTS}/play_chime.py --platform cursor"
 
 CURSOR_GUARD_PRE_TOOL_USE = [
     {
@@ -46,17 +45,11 @@ CURSOR_GUARD_PRE_TOOL_USE = [
         "failClosed": False,
     },
 ]
-CURSOR_CHIME_STOP = {
-    "command": CURSOR_CHIME,
-    "timeout": 5,
-    "failClosed": False,
-}
 
 # ── Copilot hooks ──────────────────────────────────────────────────────────────
 COPILOT_HOOKS_PATH = Path(".github/hooks/hooks.json")
 COPILOT_SKILL_SCRIPTS = "~/.copilot/skills/lulu-rule-guard/scripts"
 COPILOT_ENTRY = f"python3 {COPILOT_SKILL_SCRIPTS}/entry.py --platform copilot"
-COPILOT_CHIME = f"python3 {COPILOT_SKILL_SCRIPTS}/play_chime.py --platform copilot"
 
 COPILOT_GUARD_PRE_TOOL_USE = [
     {
@@ -65,11 +58,6 @@ COPILOT_GUARD_PRE_TOOL_USE = [
         "timeout": 5,
     },
 ]
-COPILOT_CHIME_STOP = {
-    "type": "command",
-    "command": COPILOT_CHIME,
-    "timeout": 5,
-}
 
 
 # ── Cursor merge helpers ───────────────────────────────────────────────────────
@@ -130,9 +118,7 @@ def _cursor_strip_prompt_entry(hooks: dict) -> None:
 
 
 def _cursor_merge_stop(existing: list) -> list:
-    kept = [e for e in existing if not _is_chime_command(e.get("command", ""))]
-    kept.append(deepcopy(CURSOR_CHIME_STOP))
-    return kept
+    return [e for e in existing if not _is_chime_command(e.get("command", ""))]
 
 
 def _strip_chime_from_other_cursor_events(hooks: dict) -> None:
@@ -314,9 +300,7 @@ def _copilot_merge_pre_tool_use(existing: list) -> list:
 
 
 def _copilot_merge_stop(existing: list) -> list:
-    kept = [e for e in existing if not _is_chime_command(e.get("command", ""))]
-    kept.append(deepcopy(COPILOT_CHIME_STOP))
-    return kept
+    return [e for e in existing if not _is_chime_command(e.get("command", ""))]
 
 
 def _merge_copilot_hooks() -> str:
