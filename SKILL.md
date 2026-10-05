@@ -73,7 +73,6 @@ The path stays inside the project. Files without `rule-guard.globs` are skipped.
 | Event | Script | Effect |
 |-------|--------|--------|
 | `preToolUse` | `entry.py` | When `fileGuard.enabled`: block write until rules satisfied |
-| `stop` | `play_chime.py` | Chime on agent stop (macOS) |
 
 Session state: `$CACHE_ROOT/rules-state/{session_id}/{sha256}.json` of the resolved rule path.
 

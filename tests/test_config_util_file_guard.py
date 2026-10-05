@@ -99,7 +99,7 @@ class TestFileGuardHelpers(unittest.TestCase):
             self.assertTrue(data["chimeGuard"]["enabled"])
             self.assertEqual(len(data["fileGuard"]["rules"]), 1)
             loaded = load_runtime_config(str(config))
-            self.assertTrue(loaded.chime.enabled)
+            self.assertEqual(len(loaded.file_guard.rules), 1)
 
     def test_migrate_legacy_rules_file(self):
         with tempfile.TemporaryDirectory() as tmp:

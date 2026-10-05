@@ -52,9 +52,8 @@ def test_cursor_hooks_created_fresh(tmp_path, monkeypatch):
 
     assert "beforeReadFile" not in hooks
 
-    # stop must have play_chime
-    stop = hooks["stop"]
-    assert any("play_chime" in e["command"] for e in stop)
+    stop = hooks.get("stop", [])
+    assert not any("play_chime" in e.get("command", "") for e in stop)
 
     # legacy pathGuard prompt_entry must not be re-registered
     bsp = hooks.get("beforeSubmitPrompt", [])
@@ -78,8 +77,10 @@ def test_cursor_hooks_idempotent(tmp_path, monkeypatch):
     cursor_entries = [c for c in pre_cmds if "entry.py --platform cursor" in c]
     assert len(cursor_entries) == 1, f"Expected 1, got {len(cursor_entries)}: {cursor_entries}"
 
-    chime_stops = [e for e in hooks["stop"] if "play_chime" in e["command"]]
-    assert len(chime_stops) == 1, f"Chime duplicated: {chime_stops}"
+    chime_stops = [
+        e for e in hooks.get("stop", []) if "play_chime" in e.get("command", "")
+    ]
+    assert chime_stops == []
 
     prompt_entries = [
         c for c in [e["command"] for e in hooks.get("beforeSubmitPrompt", [])]
@@ -118,6 +119,34 @@ def test_cursor_hooks_preserves_existing(tmp_path, monkeypatch):
 
     stop_cmds = [e["command"] for e in data["hooks"]["stop"]]
     assert "python3 my-stop.py" in stop_cmds, "Existing stop entry lost"
+    assert not any("play_chime" in c for c in stop_cmds)
+
+
+def test_cursor_hooks_strips_legacy_play_chime(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    cursor_dir = tmp_path / ".cursor"
+    cursor_dir.mkdir()
+    hooks_file = cursor_dir / "hooks.json"
+    hooks_file.write_text(
+        json.dumps({
+            "version": 1,
+            "hooks": {
+                "stop": [
+                    {
+                        "command": "python3 ~/.agents/skills/lulu-rule-guard/scripts/play_chime.py --platform cursor",
+                        "timeout": 5,
+                        "failClosed": False,
+                    },
+                    {"command": "python3 my-stop.py", "timeout": 2, "failClosed": False},
+                ],
+            },
+        }) + "\n",
+        encoding="utf-8",
+    )
+    import init as init_mod
+    init_mod._merge_cursor_hooks()
+    stop_cmds = [e["command"] for e in _load_hooks(hooks_file)["hooks"]["stop"]]
+    assert stop_cmds == ["python3 my-stop.py"]
 
 
 def test_cursor_hooks_replaces_old_per_script_entries(tmp_path, monkeypatch):
@@ -218,8 +247,8 @@ def test_copilot_hooks_created_fresh(tmp_path, monkeypatch):
     # VS Code requires type: "command"
     assert all(e.get("type") == "command" for e in pre)
 
-    stop = hooks["Stop"]
-    assert any("play_chime" in e["command"] for e in stop)
+    stop = hooks.get("Stop", [])
+    assert not any("play_chime" in e.get("command", "") for e in stop)
 
 
 def test_copilot_hooks_idempotent(tmp_path, monkeypatch):
@@ -239,8 +268,10 @@ def test_copilot_hooks_idempotent(tmp_path, monkeypatch):
     ]
     assert len(copilot_entries) == 1, f"Duplicated: {copilot_entries}"
 
-    chime_stops = [e for e in hooks["Stop"] if "play_chime" in e["command"]]
-    assert len(chime_stops) == 1, f"Chime duplicated: {chime_stops}"
+    chime_stops = [
+        e for e in hooks.get("Stop", []) if "play_chime" in e.get("command", "")
+    ]
+    assert chime_stops == []
 
 
 def test_copilot_hooks_preserves_existing(tmp_path, monkeypatch):
